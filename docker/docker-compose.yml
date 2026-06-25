@@ -1,0 +1,133 @@
+version: '3.8'
+
+# ============================================================
+# Multi-DB Airflow Pipeline - Local Dev Stack
+# Services: Airflow + PostgreSQL + MongoDB + SQLite (Oracle sim)
+# ============================================================
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.8.1
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
+    AIRFLOW__CORE__FERNET_KEY: 'ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg='
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'true'
+    
+    # ── FIXED: Automated package installation ────────────────
+    _PIP_ADDITIONAL_REQUIREMENTS: "pymongo"
+
+    # App DB connection (separate from Airflow metadata DB)
+    APP_POSTGRES_HOST: postgres-app
+    APP_POSTGRES_PORT: 5432
+    APP_POSTGRES_DB: flightops
+    APP_POSTGRES_USER: flightops_user
+    APP_POSTGRES_PASSWORD: flightops_pass
+    # MongoDB connection
+    MONGO_HOST: mongodb
+    MONGO_PORT: 27017
+    MONGO_USER: mongo_user
+    MONGO_PASSWORD: mongo_pass
+    MONGO_DB: flight_data
+    # SQLite path (simulates Oracle on-prem)
+    SQLITE_DB_PATH: /opt/airflow/data/onprem_oracle_sim.db
+  volumes:
+    - ../dags:/opt/airflow/dags
+    - ../scripts:/opt/airflow/scripts
+    - ../data:/opt/airflow/data
+    - airflow-logs:/opt/airflow/logs
+  depends_on:
+    postgres-airflow:
+      condition: service_healthy
+    postgres-app:
+      condition: service_healthy
+    mongodb:
+      condition: service_healthy
+
+services:
+
+  # ── Airflow metadata DB ──────────────────────────────────
+  postgres-airflow:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-airflow-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+
+  # ── Application PostgreSQL (process tracking) ────────────
+  postgres-app:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: flightops_user
+      POSTGRES_PASSWORD: flightops_pass
+      POSTGRES_DB: flightops
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-app-data:/var/lib/postgresql/data
+      - ../scripts/init_postgres.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "flightops_user", "-d", "flightops"]
+      interval: 5s
+      retries: 5
+
+  # ── MongoDB (DocumentDB equivalent) ─────────────────────
+  mongodb:
+    image: mongo:6.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo_user
+      MONGO_INITDB_ROOT_PASSWORD: mongo_pass
+      MONGO_INITDB_DATABASE: flight_data
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+      - ../scripts/init_mongo.js:/docker-entrypoint-initdb.d/init_mongo.js
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "-u", "mongo_user", "-p", "mongo_pass", "--authenticationDatabase", "admin"]
+      interval: 10s
+      retries: 5
+
+  # ── Airflow Init ─────────────────────────────────────────
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db init &&
+        airflow users create --username admin --password admin \
+          --firstname Admin --lastname User --role Admin \
+          --email admin@example.com &&
+        echo "Airflow initialized"
+    restart: "no"
+
+  # ── Airflow Webserver ────────────────────────────────────
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      retries: 3
+    restart: unless-stopped
+
+  # ── Airflow Scheduler ────────────────────────────────────
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    restart: unless-stopped
+
+volumes:
+  postgres-airflow-data:
+  postgres-app-data:
+  mongo-data:
+  airflow-logs:
