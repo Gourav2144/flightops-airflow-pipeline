@@ -194,21 +194,21 @@ making the pipeline safe to re-run without creating duplicates.
 ## Pipeline in Action
 
 ### Airflow DAG List — Both DAGs Running
-![DAG List](screenshots/airflow_dag_list.jpg)
+![DAG List](../screenshots/airflow_dag_list.jpg)
 
 ### Initial Load DAG — 7 Tasks All Green
-![Initial Load](screenshots/airflow_graph_view.jpg)
+![Initial Load](../screenshots/airflow_graph_view.jpg)
 
 ### Incremental Batch DAG — 8 Tasks, 5 Successful Runs
-![Incremental Batch](screenshots/airflow_graph_view1.jpg)
+![Incremental Batch](../screenshots/airflow_graph_view_.jpg)
 
 ### PostgreSQL Data — 4 Tables, 30+ Records Loaded
-![pgAdmin](screenshots/pgadmin_tables.jpg)
+![pgAdmin](../screenshots/pgadmin_tables.jpg)
 
 ### MongoDB — 5 Collections with Indexes
-![MongoDB](screenshots/mongodb_collections.jpg)
+![MongoDB](../screenshots/mongodb_collections.jpg)
 
------
+----
 
 ## License
 
