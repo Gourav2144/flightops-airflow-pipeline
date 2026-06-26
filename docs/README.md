@@ -190,6 +190,26 @@ making the pipeline safe to re-run without creating duplicates.
 
 ---
 
+---
+## Pipeline in Action
+
+### Airflow DAG List — Both DAGs Running
+![DAG List](screenshots/airflow_dag_list_png.jpg)
+
+### Initial Load DAG — 7 Tasks All Green
+![Initial Load](screenshots/airflow_graph_view_png.jpg)
+
+### Incremental Batch DAG — 8 Tasks, 5 Successful Runs
+![Incremental Batch](screenshots/airflow_graph_view1_png.jpg)
+
+### PostgreSQL Data — 4 Tables, 30+ Records Loaded
+![pgAdmin](screenshots/pgadmin_tables_png.jpg)
+
+### MongoDB — 5 Collections with Indexes
+![MongoDB](screenshots/mongodb_collections_png.jpg)
+
+-----
+
 ## License
 
 MIT
